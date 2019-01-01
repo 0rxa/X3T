@@ -1,103 +1,156 @@
 #include <stdbool.h>
+#include "logic.h"
 
-void drawBord( Display *dsp, Window w, GC gcLine, int *par, int x0, int y0)
+int board[3][3] = { 0 };
+struct defEnv {
+	Display *dsp;
+	Window w;
+	int par[3];
+	int x0;
+	int y0;
+	GC gcLine;
+} defenv;
+
+
+void drawBoard()
 {
-	XDrawLine( dsp, w, gcLine, x0, par[0], x0, par[2] - par[0] );
-	XDrawLine( dsp, w, gcLine, 2*x0, par[0], 2*x0, par[2] - par[0] );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			defenv.x0, defenv.par[0], defenv.x0, defenv.par[2] - defenv.par[0] );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			2*defenv.x0, defenv.par[0], 2*defenv.x0, defenv.par[2] - defenv.par[0] );
 
-	XDrawLine( dsp, w, gcLine, par[0], y0, par[1]-par[0], y0 );
-	XDrawLine( dsp, w, gcLine, par[0], 2*y0, par[1]-par[0], 2*y0 );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			defenv.par[0], defenv.y0, defenv.par[1]-defenv.par[0], defenv.y0 );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			defenv.par[0], 2*defenv.y0, defenv.par[1]-defenv.par[0], 2*defenv.y0 );
 }
 
-int getSquare(int x, int y, int x0, int y0)
+int getRow( int cx, int cy )
 {
 	int ret = 0;
+	int offset = defenv.par[0];
+	int yinc = defenv.par[2]/3;
 
-	if( y > y0 && y < 2*y0 )
+	if( cy > defenv.y0 && cy < 2*defenv.y0 )
 	{
-		ret += 3;
+		ret += (yinc)-offset;
 	}
-	else if( y > y0 )
+	else if( cy > defenv.y0 )
 	{
-		ret += 6;
+		ret += (yinc*2)-offset*2;
 	}
 
-	if( x < x0 )
+	return ret;
+}
+
+int getCol( int cx, int cy )
+{
+	int ret = 0;
+	int offset = defenv.par[0];
+	int xinc = defenv.par[1]/3;
+
+	if( cx > defenv.x0 )
 	{
-		ret += 1;
-	}
-	else
-	{
-		if( x < 2*x0 )
+		if( cx < 2*defenv.x0 )
 		{
-			ret += 2;
+			ret += (xinc)-offset;
 		}
 		else
 		{
-			ret += 3;
+			ret += (xinc*2)-offset*2;
 		}
 	}
 
 	return ret;
 }
 
-void drawX(int xinc, int yinc, Display *dsp, Window w, GC gcLine, int cx, int cy, int x, int y)
+void drawX( int row, int col )
 {
-	int xmin = 0, ymin = 0, xmax = xinc, ymax = yinc;
+	int offset = defenv.par[0]*2;
+	int xmin = col;
+	int xmax = col + defenv.x0;
+	int ymin = row;
+	int ymax = row + defenv.y0;
 
-	if( cy > y && cy < 2*y )
-	{
-		ymin += (yinc)-5;
-		ymax += (yinc)-5;
-	}
-	else if( cy > y )
-	{
-		ymin += (yinc*2)-10;
-		ymax += (yinc*2)-10;
-	}
-
-	if( cx > x )
-	{
-		if( cx < 2*x )
-		{
-			xmin += (xinc)-5;
-			xmax += (xinc)-5;
-		}
-		else
-		{
-			xmin += (xinc*2)-10;
-			xmax += (xinc*2)-10;
-		}
-	}
-
-	XDrawLine( dsp, w, gcLine, xmin+10, ymin+10, xmax-10, ymax-10 );
-	XDrawLine( dsp, w, gcLine, xmax-10, ymin+10, xmin+10, ymax-10 );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			xmin+offset, ymin+offset, xmax-offset, ymax-offset );
+	XDrawLine( defenv.dsp, defenv.w, defenv.gcLine,
+			xmax-offset, ymin+offset, xmin+offset, ymax-offset );
 }
 
-void drawO( Display *dsp, Window w, GC gcLine, int cx, int cy, int par, int bx, int by )
+void drawO( int row, int col )
 {
-	int x = bx/2, y = by/2;
+	XDrawArc( defenv.dsp, defenv.w, defenv.gcLine,
+			col+20, row+20, defenv.par[1]/4, defenv.par[1]/4, 0, 360*64 );
+}
 
-	if( cy > by && cy < 2*by )
+void init()
+{
+	int offsetC;
+	int offsetR;
+	for( int c = 0; c < 3; c++ )
 	{
-		y += (by)-5;
-	}
-	else if( cy > by )
-	{
-		y += (by*2)-10;
-	}
-
-	if( cx > bx )
-	{
-		if( cx < 2*bx )
+		offsetR = defenv.par[1]/3;
+		for( int g = 0; g < 3; g++ )
 		{
-			x += (bx)-5;
+			offsetC = defenv.par[1]/3;
+			if( board[g][c] == 1 )
+			{
+				drawO( g*offsetC, c*offsetR );
+			}
+
+			if ( board[g][c] == 2 )
+			{
+				drawX( g*offsetC, c*offsetR );
+			}
+			offsetC -= defenv.par[0];
 		}
-		else
+		offsetR -= defenv.par[0];
+	}
+}
+
+void dbgBoard()
+{
+	for( int c = 0; c < 3; c++ )
+	{
+		for( int g = 0; g < 3; g++ )
 		{
-			x += (bx*2)-10;
+			printf("%d ", board[c][g]);
+		}
+		puts("");
+	}
+}
+
+bool check()
+{
+	bool r = false;
+	for( int c = 0; c < 3; c++ )
+	{
+		if( board[c][0] != 0 && board[c][0] == board[c][1] && board[c][0] == board[c][2] )
+		{
+			printf("Win\n");
+			r = true;
+			break;
+		}
+		else if( board[0][c] != 0 && board[0][c] == board[1][c] && board[0][c] == board[2][c] )
+		{
+			printf("Win\n");
+			r = true;
+			break;
 		}
 	}
 
-	XDrawArc( dsp, w, gcLine, x-(par/2), y-(par/2), par, par, 0, 360*64 );
+	if( board[0][0] != 0 && board[0][0] == board[1][1] && board[0][0] == board[2][2] )
+	{
+		printf("Win\n");
+		r = true;
+	}
+
+	if( board[0][2] != 0 && board[0][2] == board[1][1] && board[0][2] == board[2][0] )
+	{
+		printf("Win\n");
+		r = true;
+	}
+
+	return r;
 }
