@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include "logic.h"
 
 int board[3][3] = { 0 };
 struct defEnv {
@@ -10,7 +9,6 @@ struct defEnv {
 	int y0;
 	GC gcLine;
 } defenv;
-
 
 void drawBoard()
 {
@@ -29,7 +27,7 @@ int getRow( int cx, int cy )
 {
 	int ret = 0;
 	int offset = defenv.par[0];
-	int yinc = defenv.par[2]/3;
+	int yinc = defenv.par[1]/3;
 
 	if( cy > defenv.y0 && cy < 2*defenv.y0 )
 	{
@@ -128,13 +126,11 @@ bool check()
 	{
 		if( board[c][0] != 0 && board[c][0] == board[c][1] && board[c][0] == board[c][2] )
 		{
-			printf("Win\n");
 			r = true;
 			break;
 		}
 		else if( board[0][c] != 0 && board[0][c] == board[1][c] && board[0][c] == board[2][c] )
 		{
-			printf("Win\n");
 			r = true;
 			break;
 		}
@@ -142,13 +138,11 @@ bool check()
 
 	if( board[0][0] != 0 && board[0][0] == board[1][1] && board[0][0] == board[2][2] )
 	{
-		printf("Win\n");
 		r = true;
 	}
 
 	if( board[0][2] != 0 && board[0][2] == board[1][1] && board[0][2] == board[2][0] )
 	{
-		printf("Win\n");
 		r = true;
 	}
 
