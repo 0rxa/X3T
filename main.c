@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xos.h>
+#include <X11/Xatom.h>
 #include <X11/cursorfont.h>
 #include <string.h>
 #include "game.h"
@@ -9,13 +12,17 @@
 int main(int argc, char* argv[])
 {
 	int scr;
-	Window chr;
+	Window chr, cw;
 	XEvent xev;
 
-	int tmp[3] = { 5, 500, 500 };
-	memcpy( defenv.par, tmp, sizeof(tmp) );
+	int *tmp = malloc(3*sizeof(int));
+	tmp[0] = 5;
+	tmp[1] = 500;
+	tmp[2] = 500;
+	memcpy( defenv.par, tmp, 3*sizeof(int) );
+	free(tmp);
 
-	defenv.x0 = (defenv.par[1]-(2*defenv.par[0]))/3; //Specifies x value for vertical board bars
+	defenv.x0 = (defenv.par[1] - (2*defenv.par[0]))/3; //Specifies x value for vertical board bars
 	defenv.y0 = (defenv.par[2] - (2*defenv.par[0]))/3; //Specifies y value for horizontal board bars
 
 	defenv.dsp = XOpenDisplay(getenv("Display"));
@@ -40,23 +47,32 @@ int main(int argc, char* argv[])
 	XSetLineAttributes( defenv.dsp, defenv.gcLine, 7, LineSolid, CapButt, JoinRound );
 
 	defenv.w = XCreateSimpleWindow( defenv.dsp, rwin,
-			0, 0, defenv.par[1], defenv.par[2],
+			0, 0, defenv.par[1], defenv.par[2] + defenv.par[2]/5,
 			defenv.par[0], BlackPixel( defenv.dsp, scr ),
 			WhitePixel( defenv.dsp, scr ) );
-	XSelectInput( defenv.dsp, defenv.w, ExposureMask | KeyPressMask | ButtonPressMask );
+	XSelectInput( defenv.dsp, defenv.w, ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask );
 	XMapWindow( defenv.dsp, defenv.w );
+
+	cw = XCreateSimpleWindow( defenv.dsp, defenv.w,
+			0, defenv.par[1], defenv.par[1], defenv.par[1]/5,
+			1, BlackPixel( defenv.dsp, scr ),
+			BlackPixel( defenv.dsp, scr ) );
+	XSelectInput( defenv.dsp, defenv.w, ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask );
+	XMapWindow( defenv.dsp, cw );
 
 	int x = 0, y = 0, r, c; //Stores the mouse coordinates
 	int div = defenv.par[1]/3-defenv.par[0];
 
+	int rx, ry, rwidth, rheight, rbwidth, rdepth;
+
 	bool p = 0;
+	int n = 0;
 	while( 1 )
 	{
 		XNextEvent( defenv.dsp, &xev );
 
 		if( xev.type == ButtonPress )
 		{
-			system("clear");
         		XTranslateCoordinates( defenv.dsp, defenv.w, rwin, 0, 0, &x, &y, &chr );
   			x = xev.xbutton.x_root - x;
   			y = xev.xbutton.y_root - y;
@@ -64,7 +80,6 @@ int main(int argc, char* argv[])
 			r = getRow( x, y );
 			c = getCol( x, y );
 
-			printf("Row: %d\nCol: %d\n", r/div, c/div);
 			if( board[r/div][c/div] )
 			{
 				continue;
@@ -82,9 +97,16 @@ int main(int argc, char* argv[])
 			board[r/div][c/div] = p+1;
 			if( check() )
 			{
+				fprintf( stdout, "Player %d Wins!\n", p+1 );
 				break;
 			}
 			p = !p;
+			n++;
+			if( n == 9 )
+			{
+				printf("Draw\n");
+				break;
+			}
 		}
 
 		if( xev.type == Expose )
@@ -99,6 +121,5 @@ int main(int argc, char* argv[])
       		}
 
 		drawBoard();
-		dbgBoard();
 	}
 }
